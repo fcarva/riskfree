@@ -1,37 +1,76 @@
-'use client';
-
-import { useMemo } from 'react';
+import { ActionStatus, RiskLevel } from '@prisma/client';
+import { prisma } from '@/lib/server/db';
+import { requireUser } from '@/lib/server/session';
 import { cn } from '@/lib/utils';
 
-const metrics = [
-  {
-    label: 'Projetos ativos',
-    value: 8,
-    trend: '+2 vs mês anterior',
-  },
-  {
-    label: 'Máquinas avaliadas',
-    value: 126,
-    trend: '58 pendentes',
-  },
-  {
-    label: 'Riscos críticos',
-    value: 12,
-    trend: '4 aguardando validação',
-  },
-  {
-    label: 'Implementação concluída',
-    value: '68%',
-    trend: '+12% nos últimos 30 dias',
-  },
-];
+export async function CardsGrid() {
+  const user = await requireUser();
 
-export function CardsGrid() {
-  const items = useMemo(() => metrics, []);
+  const [
+    projectsCount,
+    machinesCount,
+    criticalRisksCount,
+    openActionsCount,
+    totalActionsCount,
+    completedActionsCount,
+  ] = await Promise.all([
+    prisma.project.count({ where: { userId: user.id } }),
+    prisma.machine.count({ where: { project: { userId: user.id } } }),
+    prisma.hazard.count({
+      where: {
+        machine: { project: { userId: user.id } },
+        riskLevel: { in: [RiskLevel.HIGH, RiskLevel.VERY_HIGH] },
+      },
+    }),
+    prisma.action.count({
+      where: {
+        project: { userId: user.id },
+        status: { in: [ActionStatus.PENDING, ActionStatus.IN_PROGRESS] },
+      },
+    }),
+    prisma.action.count({ where: { project: { userId: user.id } } }),
+    prisma.action.count({
+      where: {
+        project: { userId: user.id },
+        status: { in: [ActionStatus.COMPLETED, ActionStatus.VERIFIED] },
+      },
+    }),
+  ]);
+
+  const implementationRate = totalActionsCount === 0
+    ? 100
+    : Math.round((completedActionsCount / totalActionsCount) * 100);
+
+  const implementationTrend = totalActionsCount === 0
+    ? 'Nenhuma ação cadastrada'
+    : `${completedActionsCount} de ${totalActionsCount} ações concluídas`;
+
+  const metrics = [
+    {
+      label: 'Projetos ativos',
+      value: projectsCount,
+      trend: `${machinesCount} máquinas cadastradas`,
+    },
+    {
+      label: 'Máquinas avaliadas',
+      value: machinesCount,
+      trend: `${criticalRisksCount} riscos críticos identificados`,
+    },
+    {
+      label: 'Riscos críticos',
+      value: criticalRisksCount,
+      trend: `${openActionsCount} ações abertas associadas`,
+    },
+    {
+      label: 'Implementação concluída',
+      value: `${implementationRate}%`,
+      trend: implementationTrend,
+    },
+  ];
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {items.map((metric) => (
+      {metrics.map((metric) => (
         <article
           key={metric.label}
           className={cn(

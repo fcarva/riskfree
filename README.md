@@ -24,19 +24,23 @@ RiskManager Pro is a comprehensive risk analysis platform being developed for **
    npm install
    ```
 2. **Configure environment variables**
-   - Duplicate `.env.example` (to be created) as `.env.local`.
-   - Set at minimum `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`.
+   - Duplicate `.env.example` as `.env.local`.
+   - Set at minimum `DATABASE_URL`, `NEXTAUTH_SECRET`, and `NEXTAUTH_URL`.
 3. **Run database migrations**
    ```bash
    npx prisma migrate dev
    ```
-4. **Start the development server**
+4. **Seed reference data (demo user, projetos, máquinas, HRN/FMEA, plano de ação)**
+   ```bash
+   npm run db:seed
+   ```
+5. **Start the development server**
    ```bash
    npm run dev
    ```
-5. Access the application at [http://localhost:3000](http://localhost:3000).
+6. Access the application at [http://localhost:3000](http://localhost:3000).
 
-Demo credentials in the temporary in-memory auth provider:
+Demo credentials provisioned pelo seed:
 ```
 E-mail: demo@ijs.eng.br
 Senha: demo123
@@ -50,9 +54,9 @@ Senha: demo123
 
 ## Next Steps
 
-- Replace credential stub with Prisma-backed authentication (NextAuth adapters).
-- Implement real data fetching via tRPC/Next Safe Actions integrated with Prisma.
-- Build CRUD flows for projetos, máquinas, HRN e FMEA utilizando componentes dinâmicos.
-- Integrate PDF pipelines e armazenamento de documentos (S3/Supabase).
+- Expand server actions/API routes para edição e exclusão de projetos, máquinas e análises.
+- Construir telas detalhadas de HRN e FMEA com formulários ricos (React Hook Form + validação).
+- Implementar exportação de relatórios (PDF, Excel) e upload de documentos para S3/Supabase.
+- Integrar notificações (e-mail/WhatsApp) e auditoria completa com trilhas de auditoria.
 
 Contributions should follow clean code principles, maintain UX consistency, and prioritise performance and accessibility.

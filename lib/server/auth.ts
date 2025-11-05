@@ -1,7 +1,10 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import type { NextAuthOptions } from 'next-auth';
+import { Role } from '@prisma/client';
 import { z } from 'zod';
+import { prisma } from '@/lib/server/db';
+import { verifyPassword } from '@/lib/server/password';
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -22,17 +25,26 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // TODO: substituir por lookup em banco utilizando Prisma
-        if (parsed.data.email === 'demo@ijs.eng.br' && parsed.data.password === 'demo123') {
-          return {
-            id: 'demo-user',
-            name: 'Usuário Demo',
-            email: parsed.data.email,
-            role: 'ENGINEER',
-          } satisfies Record<string, unknown>;
+        const user = await prisma.user.findUnique({
+          where: { email: parsed.data.email.toLowerCase() },
+        });
+
+        if (!user) {
+          return null;
         }
 
-        return null;
+        const isValid = await verifyPassword(parsed.data.password, user.passwordHash);
+
+        if (!isValid) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          name: user.name ?? user.email,
+          email: user.email,
+          role: user.role,
+        } satisfies Record<string, unknown>;
       },
     }),
   ],
@@ -41,6 +53,24 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as { role: Role }).role;
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = (token.role as Role) ?? Role.ENGINEER;
+      }
+
+      return session;
+    },
   },
 };
 
